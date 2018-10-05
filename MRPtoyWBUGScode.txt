@@ -1,0 +1,34 @@
+model{
+for (i in 1:Nobs){                        #Individual Level Model - Respondents
+	canna[i] ~ dbern(p[i])
+	logit(p[i]) <- cons + alpha1[group1[i]] + alpha2[group2[i]] + alpha3[group3[i]] + alpha4[group4[i]] + alpha5[group5[i]] + alpha6[group6[i]]
+	}
+for (j1 in 1:Ngroup1){                    #Group Level Aggregate Residuals - Demographics
+	alpha1[j1] ~ dnorm(0,tau1)
+	}
+for (j2 in 1:Ngroup2){
+	alpha2[j2] ~ dnorm(0,tau2)
+	}
+for (j3 in 1:Ngroup3){
+	alpha3[j3] ~ dnorm(0,tau3)
+	}
+for (j4 in 1:Ngroup4){
+	alpha4[j4] ~ dnorm(0,tau4)
+	}
+for (j5 in 1:Ngroup5){
+	alpha5[j5] ~ dnorm(0,tau5)
+	}
+for (j6 in 1:Ngroup6){                   #Group Level Regression - States
+	alpha6[j6] ~ dnorm(statemean[j6],tau6)
+	statemean[j6] <- beta1*relig[j6] +beta2*presvote[j6]
+	}
+tau1~dgamma(1.2,4)                         #Vague Bayesian Priors                               
+tau2~dgamma(1.2,4)
+tau3~dgamma(1.2,4)
+tau4~dgamma(1.2,4)
+tau5~dgamma(1.2,4)
+tau6~dgamma(1.2,4)
+cons~dnorm(0,.1)
+beta1~dnorm(0,.1)
+beta2~dnorm(0,.1)
+}

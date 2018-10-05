@@ -1,0 +1,444 @@
+#-------------------------------------------------------------------------------
+#-----------Code for the estimate of MRP estimates for State-Level--------------
+#----------------estimates of Marijuana Legalization in the 2000s.--------------
+#-------------------------------------------------------------------------------
+
+
+#-----Dependency packages must be installed and the working directory set-------
+#----------------correctly below.-----------------------------------------------
+library(car)
+library(foreign)
+library(arm)
+library(MASS)
+library(maps)
+
+setwd("c:/Users/profg/Desktop/MRP2000Cann")
+
+
+#-----This block of code reads in ipoll data files and processes them.----------
+
+		#usagallup nov 2003
+	names2<-c("id","wtfctr","race","sexed","state","timezone","agesum","cregion","urban","urbancty",
+	"pctblack","congdst","stdycode","intid","gi","intloc","zipvalid","area","form_cd","form_ab",
+	"yr","month","day","monthday","yrmody","d6","adults","min","intervw1","intervw2",
+	"hvemail","email","s3","d2","d3","d3a","d4","d4a","d4b","d5",
+	"d7","d8","d9","ideol2","d11","vote00","who00","vote98",
+	          
+	"likely","marital","employ","employs","jobtype","union","children","child18","childk12","military",
+	"arealive","d27","d26","relright","q1","q2a","q2b","q3a","q3b","q3c",
+	"q3d","q3e","q3f","q3g","q3h","q3i","q4","q5","q6","q6a",
+	"q7","q7a","q8","q8a","q9","q9a","q10","q10a","q11","q12",
+	"q13","q14","q15","q16","q17","q18","q19","q20a","q20b","q20c",
+	"q20d","q20e","q21",
+	          
+	"q22","q23","q24","q25","q26","q27","q28","q29","q30","q31",
+	"q32","q33","q34","q35","q36a","q36b","q36c","q36d","q36e","q36f",
+	"q36g","q36h","q36i","q37a","q37b","q37c","q37d","q37f","q37g","q38",
+	"q39","q40","q41","q42","q43","q44","q45","q46","dataset","region",
+	"south","east","midwest","west","educ","college","educr","party","partyr","partyrr",
+	"ager","incr","ideolr",
+
+	"ideolrr","raceban1","raceban2","sexage","presvot","presvotr","presvot2","prsvot2r","presvot3","prsvot3r",
+	"presvot4","prsvot4r","presvot5","prsvot5r","q15rec","q16rec","q17rec","q17all","q17recb","q30rec",
+	"filter_$","plot")
+	
+	collengths2<-c(6,4,1,1,2,2,1,1,1,1,
+               3,2,4,4,1,2,1,3,1,1,
+               4,2,2,4,8,1,2,3,1,1,
+               1,1,1,2,1,1,1,2,2,2,
+               1,1,1,1,1,1,1,1,
+               
+               2,1,1,1,1,1,1,1,1,1,
+               1,2,1,1,1,2,2,1,1,1,
+               1,1,1,1,1,1,2,2,1,1,
+               1,1,1,1,1,1,1,1,1,1,
+               1,1,1,1,3,2,1,1,1,1,
+               1,1,1,
+               
+               1,1,1,1,1,1,1,1,4,1,
+               1,1,1,1,1,1,1,1,1,1,
+               1,1,1,1,1,1,1,1,1,1,
+               1,1,1,2,1,1,1,1,8,8,
+               8,8,8,8,8,8,8,8,8,8,
+               8,8,8,
+               
+               8,8,8,8,8,8,8,8,8,8,
+               8,8,8,8,8,8,8,8,8,8,
+               1,8)
+
+	usagallupnov2003<-read.fwf("ga200350.dat", widths=collengths2,header=F)
+	colnames(usagallupnov2003)<-names2
+	c2003gal<-usagallupnov2003
+	c2003gal$year03gal<-2003
+	c2003gal$canleg03gal<-recode(c2003gal$q27,'1=1;2=0;3=0;4=0;NA=NA')
+	c2003gal$age03gal<-recode(c2003gal$d2,'0=NA')
+
+
+	c2003gal$state03gal<-c2003gal$state
+
+	c2003gal$female03gal<-recode(c2003gal$s3,'2=1;else=0')
+	c2003gal$educ03gal<-recode(c2003gal$d3,'1:4=0;5=.25;6:7=.5;8=.75;else=NA')
+	c2003gal$d3a2<-recode(c2003gal$d3a,'NA=999')
+	for (i in 1:length(c2003gal$state03gal)){
+		if (c2003gal$d3a2[i]==1) {c2003gal$educ03gal[i]<-1}}
+	c2003gal$black03gal<-recode(c2003gal$d4a,"7=1;else=0")
+	c2003gal$hisp03gal<-recode(c2003gal$d4,"1=1;2:4=0")
+	c2003gal$NW03gal<-recode(c2003gal$d4a,"1=1;3:8=0;9=1;else=0")
+	c2003gal$ideo03gal<-recode(c2003gal$d9,'1=-2;2=-1;3=0;4=1;5=2;else=NA')
+	c2003gal$pid03gal<-recode(c2003gal$d7,'1=-1;2=1;else=0')
+	c2003gal$pidL03gal<-c2003gal$pid03gal
+	c2003gal$d82<-recode(c2003gal$d8,'NA=999')
+	for (i in 1:length(c2003gal$state03gal)){
+		if (c2003gal$d82[i]==1) {c2003gal$pidL03gal[i] <- 1}
+		if (c2003gal$d82[i]==2) {c2003gal$pidL03gal[i] <- -1}}
+	c2003gal$attend03gal<-recode(c2003gal$d26,'5=0;4=.24;3=.5;4=.75;5=1') #never,seldom,once a mont,less thn weekly, at least weekly
+	c2003gal$prot03gal<-recode(c2003gal$d27,'6=1;else=0')
+	c2003gal$cath03gal<-recode(c2003gal$d27,'7=1;else=0')
+	c2003gal$borna03gal<-recode(c2003gal$q43,'1=1;else=0')
+
+	c2003gal$smallamountCANok<-recode(c2003gal$q28,'1=1;NA=NA;else=0')
+	c2003gal$MMdocCANok<-recode(c2003gal$q29,'1=1;NA=NA;else=0')
+
+
+	#c2003gal$sizeplace03gal<-recode(c2003gal$d28,'6=0;5=.25;4=.5;3=.5;2=.75;1=1;else=NA')#rural,town,suburb,small city, big city
+	#c2003gal$LGBT03gal<-recode(c2003gal$d33,'1=1;else=0')
+
+
+
+	#usagallup august 2001
+
+	names3<-c("id","wtfctr","race","sexed","state","agesum","cregion","urban","intid","gi",
+	          "area","form_cd","form_ab","yr","month","day","monthday","yrmody","d6","min",
+	          "intervw1","intervw2","hvemail","email","d1","d2","d3","d3a","d4","d4a",
+	          "d4b","d5","d7","d8","d9","ideol2","d11","d12","who00","likely",
+	          "d14","d15","employs","jobtype","union","children","d19","childk12",
+          
+	          "military","arealive","d28","d27","relright","q1","q2","q3a","q3b","q3c",
+	          "q3d","q3e","q3f","q3g","q4","q5","q6","q7a","q7b","q8",
+	          "q9","q10","q11","q12","q13","q14a","q14b","q14c","q14d","q15",
+	          "q16","q17","q18","q18a","q19","q20","q21","q22","q23","q24",
+	          "q25","q26","q27","q28","q29","q30","q31","q32","q33","q34",
+	          "q35","q36","q37",
+          
+        	  "q38","q39","q40","q41","q42","q43","q44","q45","q46","q47",
+	          "q48","q49","dataset","region","south","east","midwest","west","educ","college",
+	          "educr","party","partyr","partyrr","ager","incr","ideolr","ideolrr","presvot","presvotr",
+	          "q5rec")
+
+	collengths3<-c(6,4,1,1,2,1,1,1,4,1,
+	               3,1,1,4,2,2,4,8,1,3,
+	               1,1,1,1,1,2,1,1,1,2,
+	               2,2,1,1,1,1,1,1,1,2,
+	               1,1,1,1,1,1,1,1,
+	               
+	               1,1,2,1,1,1,1,1,1,1,
+	               1,1,1,1,1,2,1,1,1,1,
+	               1,1,1,1,1,1,1,1,1,1,
+	               2,2,1,1,1,1,1,1,1,1,
+	               1,1,1,1,1,1,1,1,1,1,
+	               1,1,1,
+               
+	               1,1,1,1,1,1,1,1,1,1,
+	               1,2,8,8,8,8,8,8,8,8,
+	               8,8,8,8,8,8,8,8,8,8,
+	               8)
+
+	usagallupaug2001<-read.fwf("a200127.dat", widths=collengths3,header=F)
+	colnames(usagallupaug2001)<-names3
+	c2001gal<-usagallupaug2001
+	c2001gal$year01gal<-2001
+	c2001gal$canleg01gal<-recode(c2001gal$q44,'1=1;2=0;3=0')
+	c2001gal$age01gal<-recode(c2001gal$d2,'0=NA')
+	
+	c2001gal$state01gal<-c2001gal$state
+	
+	c2001gal$female01gal<-recode(c2001gal$d1,'2=1;else=0')
+	c2001gal$educ01gal<-recode(c2001gal$d3,'1:4=0;5=.25;6:7=.5;8=.75;else=NA')
+	c2001gal$d3a2<-recode(c2001gal$d3a,'NA=999')
+	for (i in 1:length(c2001gal$state01gal)){
+		if (c2001gal$d3a2[i]==1) {c2001gal$educ01gal[i]<-1}}
+	c2001gal$black01gal<-recode(c2001gal$d4a,"7=1;else=0")
+	c2001gal$hisp01gal<-recode(c2001gal$d4,"1=1;2:4=0")
+	c2001gal$NW01gal<-recode(c2001gal$d4a,"1=1;3:8=0;9=1;else=0")
+	c2001gal$ideo01gal<-recode(c2001gal$d9,'1=-2;2=-1;3=0;4=1;5=2;else=NA')
+	c2001gal$pid01gal<-recode(c2001gal$d7,'1=-1;2=1;else=0')
+	c2001gal$pidL01gal<-c2001gal$pid01gal
+	c2001gal$d82<-recode(c2001gal$d8,'NA=999')
+	for (i in 1:length(c2001gal$state01gal)){
+		if (c2001gal$d82[i]==1) {c2001gal$pidL01gal[i] <- 1}
+		if (c2001gal$d82[i]==2) {c2001gal$pidL01gal[i] <- -1}}
+	c2001gal$attend01gal<-recode(c2001gal$d27,'5=0;4=.24;3=.5;4=.75;5=1') #never,seldom,once a mont,less thn weekly, at least weekly
+	c2001gal$prot01gal<-recode(c2001gal$d28,'6=1;else=0')
+	c2001gal$cath01gal<-recode(c2001gal$d28,'7=1;else=0')
+	
+	#-------------2009 CBS/NYT Jan ----------------------
+
+	c2009cbsA<-read.spss("c200901a.por")
+	c2009cbsA<-as.data.frame(c2009cbsA)
+	
+	c2009cbsA$year09cbsA<-2009
+	c2009cbsA$canleg09cbsA<-recode(as.numeric(c2009cbsA$Q88),'1=1;2=0;3=0;4=0;NA=NA;else=NA')
+	
+	c2009cbsA$age09cbsA<-recode(as.numeric(c2009cbsA$AGE),'1=NA;73=75;74=76;75=80;76=NA;78=NA')+17
+
+
+	c2009cbsA$state09cbsA<-c2009cbsA$STCD #actual string name of state 
+
+	c2009cbsA$female09cbsA<-recode(as.numeric(c2009cbsA$SEX),'2=1;else=0')
+	c2009cbsA$educ09cbsA<-recode(as.numeric(c2009cbsA$EDUC),'1=0;2=.25;3=.5;4=.75;5=1;else=NA')
+	c2009cbsA$black09cbsA<-recode(as.numeric(c2009cbsA$RACE),"2=1;else=0")
+	c2009cbsA$hisp09cbsA<-recode(as.numeric(c2009cbsA$HISP),"1=1;else=0")
+	c2009cbsA$NW09cbsA<-recode(as.numeric(c2009cbsA$RACE),"3:4=1;else=0")
+	
+	c2009cbsA$ideo09cbsA<-recode(as.numeric(c2009cbsA$PPHL),'1=1;2=0;3=-1;4=0;else=NA')
+	c2009cbsA$pid09cbsA<-recode(as.numeric(c2009cbsA$PRTY),'1=-1;2=1;else=0')
+	c2009cbsA$prot09cbsA<-recode(as.numeric(c2009cbsA$RELI),'1=1;else=0')
+	c2009cbsA$cath09cbsA<-recode(as.numeric(c2009cbsA$RELI),'2=1;else=0')
+	c2009cbsA$sizeplace09cbsA<-recode(as.numeric(c2009cbsA$URBN),'5=0;4=.25;3=.5;2=.75;1=1;else=NA')#rural,town,suburb,small city, big city
+	c2009cbsA$borna09cbsA<-recode(as.numeric(c2009cbsA$EVAN),'1=1;else=0')
+
+	#-------------2009 CBS/NYT Mar ----------------------
+	c2009cbsB<-read.spss("c200903a.por")
+	c2009cbsB<-as.data.frame(c2009cbsB)
+
+
+	c2009cbsB$year09cbsB<-2009
+	c2009cbsB$canleg09cbsB<-recode(as.numeric(c2009cbsB$Q68),'1=1;2=0;3=0;4=0;NA=NA;else=NA')
+
+	c2009cbsB$age09cbsB<-recode(as.numeric(c2009cbsB$AGE),'1=NA;76=NA;78=NA')+17
+	
+	
+	c2009cbsB$state09cbsB<-c2009cbsB$STCD #actual string name of state 
+	
+	c2009cbsB$female09cbsB<-recode(as.numeric(c2009cbsB$SEX),'2=1;else=0')
+	c2009cbsB$educ09cbsB<-recode(as.numeric(c2009cbsB$EDUC),'1=0;2=.25;3=.5;4=.75;5=1;else=NA')
+	c2009cbsB$black09cbsB<-recode(as.numeric(c2009cbsB$RACE),"2=1;else=0")
+	c2009cbsB$hisp09cbsB<-recode(as.numeric(c2009cbsB$HISP),"1=1;else=0")
+	c2009cbsB$NW09cbsB<-recode(as.numeric(c2009cbsB$RACE),"3:4=1;else=0")
+
+	c2009cbsB$ideo09cbsB<-recode(as.numeric(c2009cbsB$PPHL),'1=1;2=0;3=-1;4=0;else=NA')
+	c2009cbsB$pid09cbsB<-recode(as.numeric(c2009cbsB$PRTY),'1=-1;2=1;else=0')
+	c2009cbsB$prot09cbsB<-recode(as.numeric(c2009cbsB$RELI),'1=1;else=0')
+	c2009cbsB$cath09cbsB<-recode(as.numeric(c2009cbsB$RELI),'2=1;else=0')
+	c2009cbsB$sizeplace09cbsB<-recode(as.numeric(c2009cbsB$URBN),'5=0;4=.25;3=.5;2=.75;1=1;else=NA')#rural,town,suburb,small city, big city
+	c2009cbsB$borna09cbsB<-recode(as.numeric(c2009cbsB$EVAN),'1=1;else=0')
+	c2009cbsB$taxCANleg<-recode(as.numeric(c2009cbsB$q69),'1=1;2=0;3=0;else=NA')
+
+
+	#-------------2009 CBS/NYT July ----------------------
+	c2009cbsC<-read.spss("c200907a.por")
+	c2009cbsC<-as.data.frame(c2009cbsC)
+
+
+	c2009cbsC$year09cbsC<-2009
+	c2009cbsC$canleg09cbsC<-recode(as.numeric(c2009cbsC$Q62),'1=1;2=0;3=0;4=0;NA=NA;else=NA')
+
+	c2009cbsC$age09cbsC<-recode(as.numeric(c2009cbsC$AGE),'1=NA;77=NA')+17
+
+
+	c2009cbsC$state09cbsC<-c2009cbsC$STCD #actual string name of state 
+
+	c2009cbsC$female09cbsC<-recode(as.numeric(c2009cbsC$SEX),'2=1;else=0')
+	c2009cbsC$educ09cbsC<-recode(as.numeric(c2009cbsC$EDUC),'1=0;2=.25;3=.5;4=.75;5=1;else=NA')
+	c2009cbsC$black09cbsC<-recode(as.numeric(c2009cbsC$RACE),"2=1;else=0")
+	c2009cbsC$hisp09cbsC<-recode(as.numeric(c2009cbsC$HISP),"1=1;else=0")
+	c2009cbsC$NW09cbsC<-recode(as.numeric(c2009cbsC$RACE),"3:4=1;else=0")
+
+	c2009cbsC$ideo09cbsC<-recode(as.numeric(c2009cbsC$PPHL),'1=1;2=0;3=-1;4=0;else=NA')
+	c2009cbsC$pid09cbsC<-recode(as.numeric(c2009cbsC$PRTY),'1=-1;2=1;else=0')
+	c2009cbsC$prot09cbsC<-recode(as.numeric(c2009cbsC$RELI),'1=1;else=0')
+	c2009cbsC$cath09cbsC<-recode(as.numeric(c2009cbsC$RELI),'2=1;else=0')
+	c2009cbsC$sizeplace09cbsC<-recode(as.numeric(c2009cbsC$URBN),'5=0;4=.25;3=.5;2=.75;1=1;else=NA')#rural,town,suburb,small city, big city
+	c2009cbsC$borna09cbsC<-recode(as.numeric(c2009cbsC$EVAN),'1=1;else=0')
+
+	#-------------2009 CBS/NYT Oct ----------------------
+	c2009cbsD<-read.spss("c200910a.por")
+	c2009cbsD<-as.data.frame(c2009cbsD)
+
+	c2009cbsD$year09cbsD<-2009
+	c2009cbsD$canleg09cbsD<-recode(as.numeric(c2009cbsD$Q75),'1=1;2=0;3=0;4=0;NA=NA;else=NA')
+
+	c2009cbsD$age09cbsD<-recode(as.numeric(c2009cbsD$AGE),'76=NA')+17
+
+
+	c2009cbsD$state09cbsD<-c2009cbsD$STCD #actual string name of state 
+
+	c2009cbsD$female09cbsD<-recode(as.numeric(c2009cbsD$SEX),'2=1;else=0')
+	c2009cbsD$educ09cbsD<-recode(as.numeric(c2009cbsD$EDUC),'1=0;2=.25;3=.5;4=.75;5=1;else=NA;else=NA')
+	c2009cbsD$black09cbsD<-recode(as.numeric(c2009cbsD$RACE),"2=1;else=0")
+	c2009cbsD$hisp09cbsD<-recode(as.numeric(c2009cbsD$HISP),"1=1;else=0")
+	c2009cbsD$NW09cbsD<-recode(as.numeric(c2009cbsD$RACE),"3:4=1;else=0")
+
+	c2009cbsD$ideo09cbsD<-recode(as.numeric(c2009cbsD$PPHL),'1=2;2=1;3=0;4=-1;5=-2;else=0')
+	c2009cbsD$pid09cbsD<-recode(as.numeric(c2009cbsD$PRTY),'1=-1;2=1;else=0')
+	c2009cbsD$prot09cbsD<-recode(as.numeric(c2009cbsD$RELI),'1=1;else=0')
+	c2009cbsD$cath09cbsD<-recode(as.numeric(c2009cbsD$RELI),'2=1;else=0')
+	c2009cbsD$sizeplace09cbsD<-recode(as.numeric(c2009cbsD$URBN),'5=0;4=.25;3=.5;2=.75;1=1;else=NA')#rural,town,suburb,small city, big city
+	c2009cbsD$borna09cbsD<-recode(as.numeric(c2009cbsD$EVAN),'1=1;else=0')
+
+
+#--------This code stacks the 'megapoll'------------------------------
+
+
+statedata<-read.table("CannabisStateAggData.csv",sep=",",header=T)
+statename<-statedata[,2]
+statecbsid<-recode(statedata[,3],"NA=999")
+stateabbrev<-statedata[,4]
+stategallupid<-recode(statedata[,1],"NA=999")
+PLstateID<-recode(statedata[,5],"NA=999")
+FstatecbsP2<-"cbs"
+FstatecbsP2<-c(c2009cbsA$state09cbsA,c2009cbsB$state09cbsB,
+			c2009cbsC$state09cbsC,c2009cbsD$state09cbsD)
+FstatecbsP2<-recode(FstatecbsP2,'NA=999')
+FstatecbsP3<-0
+for (i in 1:length(FstatecbsP2)){
+		for (j in 1:length(statecbsid)){
+			if (FstatecbsP2[i]==statecbsid[j]) {FstatecbsP3[i]<-stategallupid[j]}}}
+FstatecbsP4<-recode(FstatecbsP3,'999=NA')
+
+Fstate<-c(c2001gal$state01gal,c2003gal$state03gal,FstatecbsP4)
+Fstate2<-recode(Fstate,'NA=999')
+Fstate3<-NA
+for (i in 1:length(Fstate2)){
+		for (j in 1:length(stategallupid)){
+			if (Fstate2[i]==stategallupid[j]) {Fstate3[i]<-paste0(stateabbrev[j])}}}
+Fstate4<-recode(Fstate3,'999=NA')
+stateiden<-999
+for (i in 1:length(Fstate4)){
+		for (j in 1:length(stategallupid)){
+			if (Fstate4[i]==stateabbrev[j]) {stateiden[i]<-PLstateID[j]}}}
+stateiden<-recode(stateiden,'999=NA')
+
+Fcanleg<-c(c2001gal$canleg01gal,c2003gal$canleg03gal,c2009cbsA$canleg09cbsA,c2009cbsB$canleg09cbsB,
+			c2009cbsC$canleg09cbsC,c2009cbsD$canleg09cbsD)
+Fyear<-c(c2001gal$year01gal,c2003gal$year03gal,c2009cbsA$year09cbsA,c2009cbsB$year09cbsB,
+			c2009cbsC$year09cbsC,c2009cbsD$year09cbsD)
+Fage<-c(c2001gal$age01gal,c2003gal$age03gal,c2009cbsA$age09cbsA,c2009cbsB$age09cbsB,
+			c2009cbsC$age09cbsC,c2009cbsD$age09cbsD)
+Feduc<-c(c2001gal$educ01gal,c2003gal$educ03gal,c2009cbsA$educ09cbsA,c2009cbsB$educ09cbsB,
+			c2009cbsC$educ09cbsC,c2009cbsD$educ09cbsD)
+Ffemale<-c(c2001gal$female01gal,c2003gal$female03gal,c2009cbsA$female09cbsA,c2009cbsB$female09cbsB,
+			c2009cbsC$female09cbsC,c2009cbsD$female09cbsD)
+Fblack<-c(c2001gal$black01gal,c2003gal$black03gal,c2009cbsA$black09cbsA,c2009cbsB$black09cbsB,
+			c2009cbsC$black09cbsC,c2009cbsD$black09cbsD)
+FNW<-c(c2001gal$NW01gal,c2003gal$NW03gal,c2009cbsA$NW09cbsA,c2009cbsB$NW09cbsB,
+			c2009cbsC$NW09cbsC,c2009cbsD$NW09cbsD)
+Fbirthyear<-Fyear-Fage
+Fgen<-recode(Fbirthyear,"1878:1900='WWI';1901:1930='greatest';1931:1945='silent';1946:1959='boomer';
+		1960:1979='Xer';1980:1994='Mil'")
+Fpoll<-c(rep(1,length(c2001gal$NW01gal)),rep(2,length(c2003gal$NW03gal)),rep(3,length(c2009cbsA$NW09cbsA)),
+			rep(4,length(c2009cbsB$NW09cbsB)),rep(5,length(c2009cbsC$NW09cbsC)),rep(6,length(c2009cbsD$NW09cbsD)))
+
+agecat<-recode(Fage,'lo:29=1;30:44=2;45:64=3;65:hi=4')
+educat<-recode(Feduc,'0=1;.25=2;.5=3;.75=4;1=4')
+ageeducat<-4*(agecat-1) + educat
+FNW2<-FNW
+for (i in 1:length(FNW)){ if ((Fblack[i]==1)&(FNW[i]==1)) FNW2[i]<-0}
+race<-0+Fblack+2*FNW2
+sexrace<-1+Ffemale+race*2
+
+#-------------------------------------------------------------------------------
+#-------------For the Census Data, this code/data is borrowed from--------------
+#--------------------Kastellec, Lax, and Phillips 2016--------------------------
+
+Statelevel <- read.dta("state_level_update.dta",convert.underscore = TRUE)
+Statelevel <- Statelevel[order(Statelevel$sstate.initnum),]
+Census <- read.dta("poststratification 2000.dta",convert.underscore = TRUE)
+Census <- Census[order(Census$cstate),]
+Census$cstate.initnum <-  match(Census$cstate, Statelevel$sstate)
+Census$crace.female <- (Census$cfemale *3) + Census$crace.WBH 
+Census$cage.edu.cat <- 4 * (Census$cage.cat -1) + Census$cedu.cat 
+Census$cp.evang.full<-  Statelevel$p.evang[Census$cstate.initnum]
+Census$cp.mormon.full <- Statelevel$p.mormon[Census$cstate.initnum]
+Census$cp.relig.full <- Census$cp.evang.full + Census$cp.mormon.full
+Census$cp.kerry.full <-  Statelevel$kerry.04[Census$cstate.initnum]
+staterelig<-Statelevel$p.evang[Fpoll]+Statelevel$p.mormon[stateiden]
+statekerry<-Statelevel$kerry.04[stateiden]
+
+#------------------------------------------------------------------------------------
+#-------Building the final Megapoll dataset and estimating the-----------------------
+#--------------Multilevel Model.-----------------------------------------------------
+
+CannMegaPoll2000s<-data.frame(sexrace,Fpoll,educat,agecat,ageeducat,Fcanleg,Fstate4,stateiden,statekerry,staterelig)
+CannMegaPoll2000s<-CannMegaPoll2000s[complete.cases(CannMegaPoll2000s),]
+
+mod1<-glmer(as.factor(Fcanleg)~(1|sexrace)+(1|agecat)+(1|educat)+(1|ageeducat)+(1|Fpoll)+(1|Fstate4)+staterelig+statekerry,data=CannMegaPoll2000s,family=binomial(link='logit'))
+summary(mod1)
+
+#------------------------------------------------------------------------------------
+#-------Calculating the predictions for each census demographics cell.---------------
+#---------------Note: Code modified from Phillips/Lax 2016---------------------------
+
+state.ranefs <- array(NA,c(51,1))
+dimnames(state.ranefs) <- list(c(Statelevel$sstate),"effect")
+for(i in Statelevel$sstate){
+    state.ranefs[i,1] <- ranef(mod1)$Fstate4[i,1]
+}
+state.ranefs[,1][is.na(state.ranefs[,1])] <- 0 
+
+
+cellpred <- invlogit(fixef(mod1)["(Intercept)"]
+            +ranef(mod1)$sexrace[Census$crace.female,1]
+            +ranef(mod1)$agecat[Census$cage.cat,1]
+            +ranef(mod1)$educat[Census$cedu.cat,1]
+            +ranef(mod1)$ageeducat[Census$cage.edu.cat,1]
+            +state.ranefs[Census$cstate,1]
+            +(fixef(mod1)["staterelig"] *Census$cp.relig.full)
+            +(fixef(mod1)["statekerry"] *Census$cp.kerry.full)
+               )
+#------------------------------------------------------------------------------------
+#-------Weighting each of support estimates by the proportion in each census cell----
+#---------------and summing to creat the MRP point estimate.-------------------------
+#---------------Note: Code modified from Phillips/Lax--------------------------------
+
+cellpredweighted <- cellpred * Census$cpercent.state
+statepred <- 100* as.vector(tapply(cellpredweighted,Census$cstate,sum))
+statepred
+
+#------------------------------------------------------------------------------------
+#-------Displaying the results to a map.---------------------------------------------
+
+statepred2<-t(statepred)
+colnames(statepred2)<-Statelevel$sstate
+for (i in 1:length(statepred2)){
+	for (j in 1:length(Statelevel$sstatename)){
+		if (colnames(statepred2)[i]==Statelevel$sstate[j]) {colnames(statepred2)[i]<-paste0(Statelevel$sstatename)[j]}  }}
+state.to.map <- match.map("state", colnames(statepred2))
+x <- recode(statepred[state.to.map],'lo:34="red";34.01:37.5="pink";37.51:42="light green";42.01:50="green";50.01:hi="dark green"')
+map("state", fill = TRUE, col = x, mar=c(1,0,3.1,0))
+
+#------------------------------------------------------------------------------------
+#-------Simulation based c - intervals.----------------------------------------------
+
+nsims<-10000
+simoutput<-sim(mod1,n.sims=nsims)
+statepredV<-matrix(0,nsims,51)
+for (i in 1:nsims){
+
+	state.ranefs <- array(NA,c(51,1))
+	dimnames(state.ranefs) <- list(c(Statelevel$sstate),"effect")
+	for(j in Statelevel$sstate[-c(1,12)]){
+	    state.ranefs[j,1] <- ranef(simoutput)$Fstate4[i,j,1]
+	}
+	state.ranefs[,1][is.na(state.ranefs[,1])] <- 0 
+
+	cellpred <- invlogit(fixef(simoutput)[i,"(Intercept)"]
+	            +ranef(simoutput)$sexrace[i,Census$crace.female,1]
+	            +ranef(simoutput)$agecat[i,Census$cage.cat,1]
+	            +ranef(simoutput)$educat[i,Census$cedu.cat,1]
+	            +ranef(simoutput)$ageeducat[i,Census$cage.edu.cat,1]
+	            +state.ranefs[Census$cstate,1]
+	            +(fixef(simoutput)[i,"staterelig"] *Census$cp.relig.full)
+	            +(fixef(simoutput)[i,"statekerry"] *Census$cp.kerry.full))
+
+	cellpredweighted <- cellpred * Census$cpercent.state
+	statepredV[i,] <- 100* as.vector(tapply(cellpredweighted,Census$cstate,sum))
+}
+quant2.5<-0
+quant97.5<-0
+for (i in 1:51){
+	quant2.5[i]<-sort(statepredV[,i])[.025*nsims]
+	quant97.5[i]<-sort(statepredV[,i])[.975*nsims]}
+CIoutput<-t(rbind(quant2.5,statepred2,quant97.5))
+colnames(CIoutput)<-c("Lower 2.5% Interval", "MRP Est.", "Upper 97.5% Interval")
+CIoutput
